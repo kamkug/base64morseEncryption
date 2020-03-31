@@ -1,5 +1,18 @@
 //usr/bin/go run $0 $@; exit $?
-
+// Author: Kamil Kugler
+// package morse provides a convenient API for encryption
+// of some plaintext into ciphertext in the following way:
+// Base64 -> morse
+//
+// Where morse is actually modified in a way that it can separate between lower and upper case letters:
+// if the morse code represents a lower case letter:
+// - if composed of dots (".") only I am replacing them with stars ("*")
+// - if composed of hyphens ("-") and dots (".") I am replacing hyphens ("-") with underscores ("_")
+//
+// Please do not forget that this is a program of a hobbist and should only be used at your own risk
+// if in production or for any other purpose, however I have a hope that you will enjoy it
+//
+// Change "/usr/bin/go" based on the placement of your go binary file in your system
 package morse
 
 import (
@@ -7,15 +20,16 @@ import (
 	"strconv"
 )
 
+//Base64MorseEncode provides a full plaintext->base64->morse encryption and spits out a ciphertext
 func Base64MorseEncode(plaintext string) string {
-	const padding = `00000000`
 	var s string
-
+	// collecting required dictionaries for the ease of encryption
 	base64 := GetBase64Dict()
 	morse := GetMorseDict()
-
+	// making sure that each of the characters will be represented by its full ubyte8 representation
 	for _, v := range plaintext {
-		if a := fmt.Sprintf("%b", uint8(v)); len(a) < 8 {
+		a := fmt.Sprintf("%b", uint8(v))
+		if len(a) < 8 {
 			padding := 8 - len(a)
 			for i := 0; i < padding; i++ {
 				s += "0"
@@ -25,7 +39,7 @@ func Base64MorseEncode(plaintext string) string {
 	}
 
 	length := len(plaintext)
-
+	// verify if any padding is actually required to be able to keep our plaintext as multiples of 3 bytes
 	var requiredPadding int
 	switch {
 	case length < 3:
@@ -35,131 +49,153 @@ func Base64MorseEncode(plaintext string) string {
 	default:
 		requiredPadding = 3 - (length % 3)
 	}
-
+	// specifying padding for keeping multiples of 3 bytes in terms of base64 encrypted plaintext
+	const padding = `00000000`
+	// if padding was required we are adding it at the back
 	if requiredPadding != 0 {
 		for i := 0; i < requiredPadding; i++ {
 			s += padding
 		}
 	}
 	lengthS := len(s)
+	// actual encryption in its current form
 	var ciphertext string
+	// ensuring that we are moving triplet at a times
 	for i := 0; i < lengthS; i += 24 {
 		triplet := s[i : i+24]
+		// making sure that we are working with 6 bit values only for successful base64 encryption
 		for j := 18; j >= 0; j -= 6 {
+			// we are capturing the whole triplet in here
 			a, _ := strconv.ParseInt(triplet, 2, len(triplet))
+			// making sure that we are only using next 6 bits from the sequence by:
+			// - shifting everything to the right by j bits (simply multiples of 6)
+			// - performing a bitwise & operation to ensure that everything else is just 0's
 			lttr := int((a >> j) & 0x3F)
+			// actually encrypting a single 6 bit chunk into a base64 code using our base64 dictionary
 			b64 := base64[lttr]
-			//fmt.Printf(b64)
+			// encrypting our base64 character into its morse alternative using our morse dictionary
 			ciphertext += morse[b64] + " "
 		}
 	}
-	//fmt.Println()
+
+	// making sure that outstanding 6 bits sequences (all zeroes) from padding (at the back) are marked as "="
+	// depending on the length of our padding
 	ciphertextLength := len(ciphertext)
-	//fmt.Println(ciphertext)
+	oneHexPadding := 3
+	twoHexPadding := 6
 	switch requiredPadding {
 	case 1:
-		//fmt.Println("check1:", ciphertext[:ciphertextLength-3])
-		ciphertext = fmt.Sprintf("%v%v ", ciphertext[:ciphertextLength-3], morse["="])
+		ciphertext = fmt.Sprintf("%v%v ", ciphertext[:ciphertextLength-oneHexPadding], morse["="])
 	case 2:
-		//fmt.Println("check2:", ciphertext[:ciphertextLength-6])
-		ciphertext = fmt.Sprintf("%v %v %v ", ciphertext[:ciphertextLength-6], morse["="], morse["="])
+		ciphertext = fmt.Sprintf("%v %v %v ", ciphertext[:ciphertextLength-twoHexPadding], morse["="], morse["="])
 	}
-	//fmt.Println(ciphertext)
+	// happily return our ciphertext
 	return ciphertext
 }
 
+// DecodeMorse provides decoding functionality following : morse->base64->plaintext
+// it returns both : base64 and plaintext translation
 func DecodeMorse(encodedWord string) (string, string) {
-	var word1 string
-	var decoded string
+	var morsechar string
+	var b64 string
 	var counter int
-
-	unmorseIt := unmorsedDict()
+	// load a dictionary of "unmorsed" characters
+	unmorseIt := UnmorsedDict()
+	// look through each morse character inside of the ciphertext
 	for _, v := range encodedWord {
-		empty := ' '
-		if v != empty {
-			word1 += string(v)
-		}
+		// decode each morse char into a base64 character
 		switch {
+		// capture a single morsechar if between words (one whitespace character)
+		// will not work with more then one space in between
 		case v == 32:
-			if unmorseIt[word1] == "=" {
+			// count the amount of padding
+			if unmorseIt[morsechar] == "=" {
 				counter++
 			}
-			decoded += unmorseIt[word1]
-			//fmt.Println(word1, "decoded to:", decoded)
-			word1 = ""
-		case v == 61:
-			counter++
-			//fmt.Println("oki")
-			decoded += "="
-			word1 = ""
+			// decrypt a morse char into a base64 code unit
+			b64 += unmorseIt[morsechar]
+			morsechar = ""
+		// else build a morse character
+		default:
+			morsechar += string(v)
 		}
 	}
-
+	// load up a dictionary to decode base64 to plaintext
 	dict := DecodeBase64Dict()
 	var s string
 	var p string
-	for i := 0; i < len(decoded); i++ {
-
-		s += fmt.Sprintf("%06b", dict[string(decoded[i])])
+	// simply go over each character from our decoded morse string
+	for i := 0; i < len(b64); i++ {
+		// ensure that each character is of length 6 bits and create a string for decoding
+		s += fmt.Sprintf("%06b", dict[string(b64[i])])
 	}
-	//fmt.Println(len(s), counter)
+	// traverse at the rate of 8 bits
 	for i := 0; i < len(s)-counter*8; i += 8 {
+		// decode to ascii (plaintext) by decoding each of the 8 bit chunks into ascii
 		letter, _ := strconv.ParseInt((s[i : i+8]), 2, 8)
 		p += string(letter)
 	}
-
-	return decoded, p
+	// return base64 and plaintext
+	return b64, p
 }
 
+// GetBase64Dict used to generates a base64 dictionary for encoding
 func GetBase64Dict() map[int]string {
 	base64 := make(map[int]string)
+	// dynamically generate all of the 64 base64 chars
 	for i := 0; i < 64; i++ {
 		switch {
+		// generate upper case letters entries
 		case i >= 0 && i < 26:
 			base64[i] = string(i + 65)
+		// generate lower case letters entries
 		case i > 25 && i < 52:
 			base64[i] = string((i - 26) + 97)
+		// generate numeric entries
 		case i > 51 && i < 62:
 			base64[i] = string((i - 62) + 58)
-
+		// generate remaining entries
 		case i == 62:
 			base64[i] = "+"
 		case i == 63:
 			base64[i] = "/"
 		}
 	}
+	// return the dictionary
 	return base64
 
 }
 
+// DecodeBase64Dict generates a base64 char to its numeric representation dictionary, used for decoding
 func DecodeBase64Dict() map[string]int {
 	decodeB64 := make(map[string]int)
 	var respectiveValue int
+	// generate upper case letters entries
 	for i := 65; i < 91; i++ {
 		decodeB64[string(i)] = respectiveValue
 		respectiveValue++
 	}
-
+	// generate lower case letters entries
 	for i := 97; i < 123; i++ {
 		decodeB64[string(i)] = respectiveValue
 		respectiveValue++
 	}
-
+	// generate numeric entries
 	for i := 48; i < 58; i++ {
 		decodeB64[string(i)] = respectiveValue
 		respectiveValue++
 	}
+	// add the other two chars
 	decodeB64["+"] = 62
 	decodeB64["/"] = 63
-	//fmt.Println(decodeB64)
+	// return our dictionary
 	return decodeB64
-	//s := fmt.Sprintf("%06b", decodeB64["A"])
-	//fmt.Println(s, "in base64 binary representation")
 }
 
+// GetMorseDict generates our base64 char to morse dictionary
 func GetMorseDict() map[string]string {
 	morse := make(map[string]string)
-
+	// not too complicated
 	morse["A"] = ".-"
 	morse["a"] = "._"
 	morse["B"] = "-..."
@@ -225,13 +261,15 @@ func GetMorseDict() map[string]string {
 	morse["="] = "-...-"
 	morse["/"] = "-..-."
 	morse["+"] = ".-.-."
+	// return our dictionary for encoding
 	return morse
 }
 
-func unmorsedDict() map[string]string {
+// UnmorseDict generates our morse code to base64 dictionary for decryption
+func UnmorsedDict() map[string]string {
 
 	unmorsed := make(map[string]string)
-
+	// not too complicated
 	unmorsed[".-"] = "A"
 	unmorsed["._"] = "a"
 	unmorsed["-..."] = "B"
@@ -297,5 +335,6 @@ func unmorsedDict() map[string]string {
 	unmorsed["-...-"] = "="
 	unmorsed["-..-."] = "/"
 	unmorsed[".-.-."] = "+"
+	// return our dictionary
 	return unmorsed
 }

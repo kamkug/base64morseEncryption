@@ -9,8 +9,10 @@ import (
 func main() {
 
 	ciphertext := morse.Base64MorseEncode(os.Args[1])
-	fmt.Println("Ciphertext:", ciphertext)
-	base64, plaintext := morse.DecodeMorse(ciphertext)
-	fmt.Println("Base64:", base64)
-	fmt.Println("Plaintext:", plaintext)
+	//fmt.Println("Ciphertext:", ciphertext)
+	_, plaintext := morse.DecodeMorse(ciphertext)
+	//fmt.Println("Base64:", base64)
+	//fmt.Println("Plaintext:", plaintext)
+	fmt.Printf("\"%v\", \"%v\";\n", plaintext, ciphertext)
+
 }

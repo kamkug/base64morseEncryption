@@ -41,3 +41,36 @@ func TestBase64MorseEncode(t *testing.T) {
 		}
 	}
 }
+
+func TestDecodeMorse(t *testing.T) {
+	tests := []test{
+		{"._ --. ...- *** _... --. ---.. -...- ", "hello"},
+		{"-.-- -..- -. .__. -.-- --.-  -...- -...- ", "asia"},
+		{"--.- -..- -. .__. -.-- --.-  -...- -...- ", "Asia"},
+		{"-- -.. . _.__ -- __.. ..- ..--- -. __.. __. ..... -- .-  -...- -...- ", "0123567890"},
+		{"... --. ----. _ _... .__  -...- -...- ", "Homo"},
+		{"- --. ----. _.__ --.. -..- .- __. ... -..- -... __.. _.. .-- ----- -...- ", "Lorep Ipsum"},
+		{"--.. ..--- ----. .__ ._ --. ...- _.__ ", "gopher"},
+		{".-. ----- ----. -- --.- ..- ..... .... ", "GOLANG"},
+		{"--.. .-- ..... -.. ... ...- -... ___ -. .---- .. -...- ", "enCIPh7R"},
+		{"... --. ...- *** _... --. ---.. __. ...- ..--- ----. _.__ _... --. --.- -...- ", "Hello World"},
+		{"- -..- _._ __. _... __ ..-. _ --.. ... -... .__. _._. _.__ -... _ _... ...-- .--- __.. --.. --.-  -...- -...- ", "My name is morse"},
+	}
+
+	t.Log("Given the need to test decoding of the ciphertext.")
+	{
+		for i, v := range tests {
+			ciphertext := v.plaintext
+			plaintext := v.ciphertext
+			t.Logf("\tTest %d:\tWhen decoding %q into plaintext %q", i, ciphertext, plaintext)
+			{
+				_, p := DecodeMorse(ciphertext)
+				if plaintext != p {
+					t.Fatalf("\t%s\tShould be able to decode into plaintext", failed)
+				}
+				t.Logf("\t%s\tShould be able to decode into plaintext", succeed)
+			}
+		}
+	}
+
+}

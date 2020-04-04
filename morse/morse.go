@@ -28,14 +28,8 @@ func Base64MorseEncode(plaintext string) string {
 	morse := GetMorseDict()
 	// making sure that each of the characters will be represented by its full ubyte8 representation
 	for _, v := range plaintext {
-		a := fmt.Sprintf("%b", uint8(v))
-		if len(a) < 8 {
-			padding := 8 - len(a)
-			for i := 0; i < padding; i++ {
-				s += "0"
-			}
-			s += a
-		}
+		char := fmt.Sprintf("%08b", uint8(v))
+		s += char
 	}
 
 	length := len(plaintext)

@@ -1,7 +1,8 @@
-##Encryption : base64 -> morse and decryption back to the original plaintext
+Encryption : base64 -> morse and decryption back to the original plaintext
 
 Author: Kamil Kugler
-package morse provides a convenient API for encryption
+
+Package morse provides a convenient API for encryption
 of some plaintext into ciphertext in the following way:
 - Base64 -> morse
 

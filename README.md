@@ -4,7 +4,10 @@ Author: Kamil Kugler
 
 Package morse provides a convenient API for encryption
 of some plaintext into ciphertext in the following way:
-- Base64 -> morse
+- plaintext -> base64 -> morse(ciphertext)
+
+The same package also provied an API for reverting this process:
+- morse(ciphertext) -> base64 -> plaintext
 
 Where morse is actually modified in a way that it can separate between lower and upper case letters:
 if the morse code represents a lower case letter:

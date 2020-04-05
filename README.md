@@ -1,4 +1,4 @@
-Encryption : base64 -> morse and decryption back to the original plaintext
+## Encryption : base64 -> morse and decryption back to the original plaintext
 
 Author: Kamil Kugler
 
